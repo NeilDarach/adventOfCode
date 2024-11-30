@@ -1,6 +1,6 @@
 use crate::custom_error::AocError;
 
-#[tracing::instrument]
+#[tracing::instrument(skip(_input))]
 pub fn process(_input: &str) -> miette::Result<String, AocError> {
     panic!("Part 1 not done")
 }
