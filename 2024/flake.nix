@@ -8,6 +8,10 @@
       inputs = { nixpkgs.follows = "nixpkgs"; };
     };
     flake-utils.url = "github:numtide/flake-utils";
+    nixNvim = {
+      url = "github:NeilDarach/nixNvim";
+    };
+
   };
   outputs = { self, nixpkgs, flake-utils, nixNvim, rust-overlay, ... }@inputs:
     (flake-utils.lib.eachDefaultSystem (system:
@@ -23,23 +27,23 @@
           rust.fromRustToolchainFile ./rust-toolchain
         else
           rust.nightly.latest.default.override {
-            extensions = [ "rust-src" "rustfmt" ];
+            extensions = [ "rust-src" "rustfmt" "rust-analyzer" ];
           };
 
       in {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs;
             [
-              pkgs.rust-analyzer
               rustToolchain
               just
               bacon
               tracy
               openssl
               pkg-config
-                            cargo-generate
-                            cargo-watch
-                            cargo-nextest
+              cargo-generate
+              cargo-watch
+              cargo-nextest
+              nixNvim.packages.${pkgs.system}.nvim
             ] ++ lib.optionals pkgs.stdenv.isDarwin [
               # Additional darwin specific inputs can be set here
               pkgs.libiconv
