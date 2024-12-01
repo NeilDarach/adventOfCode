@@ -1,0 +1,11 @@
+# Use `just work day-01 part1` to work on the specific binary for a specific day's problems
+export NEXT := "$( current=$(ls -1dtr src/bin/day* | cut -c12- | sort -n | tail -1); next=$(($next + 1)); echo day${next})"
+export LATEST := "$(ls -1tr src/bin | tail -1)"
+work day="${LATEST}":
+    cargo watch -x "check --bin {{day}}" -s "just test {{day}}" -s "just lint {{day}}" 
+lint day:
+    cargo clippy --bin {{day}}
+test day:
+    cargo nextest run --bin {{day}}
+create day="${NEXT}":
+    mkdir src/bin/{{day}}; cp daily-template/* src/bin/{{day}}
