@@ -40,14 +40,4 @@ mod tests {
         assert_eq!("161", process(input)?);
         Ok(())
     }
-    fn test_parse() -> miette::Result<()> {
-        let (a, b) = find_mul("mul(2,4)").unwrap().1;
-        assert_eq!(2, a);
-        assert_eq!(4, b);
-
-        let (a, b) = find_mul("xmul(2,4)").unwrap().1;
-        assert_eq!(2, a);
-        assert_eq!(4, b);
-        Ok(())
-    }
 }

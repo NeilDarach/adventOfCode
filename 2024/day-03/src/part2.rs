@@ -1,79 +1,60 @@
 use crate::custom_error::AocError;
-use nom::branch::alt;
-use nom::bytes::complete::tag;
-use nom::character::complete::anychar;
-use nom::character::complete::i32;
-use nom::error::Error;
-use nom::multi::many1;
-use nom::sequence::separated_pair;
-use nom::IResult;
+mod parser {
+    use crate::part2::Token;
+    use nom::{
+        branch::alt,
+        bytes::complete::tag,
+        character::complete::{anychar, i32},
+        combinator::{map, value},
+        multi::many1,
+        sequence::{delimited, separated_pair},
+        IResult,
+    };
 
-#[derive(Debug)]
-pub enum Parsed {
+    pub fn parse(input: &str) -> Vec<Token> {
+        if let Ok((_, vec)) = many1(alt((
+            map(mul, |(a, b)| Token::Mul(a, b)),
+            value(Token::Do, tag("do()")),
+            value(Token::Dont, tag("don't()")),
+            value(Token::Noise, anychar),
+        )))(input)
+        {
+            vec
+        } else {
+            vec![]
+        }
+    }
+
+    fn mul(input: &str) -> IResult<&str, (i32, i32)> {
+        delimited(tag("mul("), separated_pair(i32, tag(","), i32), tag(")"))(input)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Token {
     Do,
     Dont,
     Mul(i32, i32),
+    Noise,
 }
 
 #[tracing::instrument(skip(input))]
 pub fn process(input: &str) -> miette::Result<String, AocError> {
-    //dbg!("{:?}", parsed(input));
     let mut switch = true;
     let mut val = 0;
-    for item in parsed(input) {
+    for item in parser::parse(input) {
         match item {
-            Parsed::Mul(a, b) => {
+            Token::Mul(a, b) => {
                 if switch {
                     val += a * b;
                 }
             }
-            Parsed::Do => switch = true,
-            Parsed::Dont => switch = false,
+            Token::Do => switch = true,
+            Token::Dont => switch = false,
+            Token::Noise => {}
         }
     }
     Ok(val.to_string())
-}
-
-pub fn parsed(input: &str) -> Vec<Parsed> {
-    mulvec(input)
-        .unwrap()
-        .1
-        .into_iter()
-        .filter_map(|e| e)
-        .collect::<Vec<_>>()
-}
-pub fn mulvec(input: &str) -> IResult<&str, Vec<Option<Parsed>>> {
-    many1(mul)(input)
-}
-
-pub fn mul(input: &str) -> IResult<&str, Option<Parsed>> {
-    let res = alt((
-        tag::<&str, &str, Error<&str>>("mul("),
-        tag("do()"),
-        tag("don't()"),
-    ))(input);
-    if !res.is_ok() {
-        let (input, _) = anychar(input)?;
-        return Ok((input, None));
-    }
-    let (input, inst) = res.unwrap();
-    if inst == "do()" {
-        return Ok((input, Some(Parsed::Do)));
-    }
-    if inst == "don't()" {
-        return Ok((input, Some(Parsed::Dont)));
-    }
-    let res = separated_pair(i32::<&str, Error<&str>>, tag(","), i32)(input);
-    if !res.is_ok() {
-        return Ok((input, None));
-    }
-    let (input, (a, b)) = res.unwrap();
-    let res = tag::<&str, &str, Error<&str>>(")")(input);
-    if !res.is_ok() {
-        return Ok((input, None));
-    }
-    let (input, _) = res.unwrap();
-    Ok((input, Some(Parsed::Mul(a, b))))
 }
 
 #[cfg(test)]
