@@ -1,33 +1,52 @@
 use crate::custom_error::AocError;
-use nom::bytes::complete::tag;
-use nom::character::complete::{anychar, i32};
-use nom::multi::many0;
-use nom::sequence::{delimited, preceded, separated_pair};
-use nom::IResult;
 
+mod parser {
+    use crate::part1::Token;
+    use nom::{
+        branch::alt,
+        bytes::complete::tag,
+        character::complete::{anychar, i32},
+        combinator::{map, value},
+        multi::many1,
+        sequence::{delimited, separated_pair},
+        IResult,
+    };
+
+    pub fn parse(input: &str) -> Vec<Token> {
+        if let Ok((_, vec)) = many1(token)(input) {
+            vec
+        } else {
+            vec![]
+        }
+    }
+
+    fn token(input: &str) -> IResult<&str, Token> {
+        alt((
+            map(mul, |(a, b)| Token::Mul(a, b)),
+            value(Token::Noise, anychar),
+        ))(input)
+    }
+
+    fn mul(input: &str) -> IResult<&str, (i32, i32)> {
+        delimited(tag("mul("), separated_pair(i32, tag(","), i32), tag(")"))(input)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Token {
+    Mul(i32, i32),
+    Noise,
+}
 #[tracing::instrument(skip(input))]
 pub fn process(input: &str) -> miette::Result<String, AocError> {
-    let muls = muls(input);
-    dbg!("{:?}", &muls);
-    Ok(muls.iter().map(|(a, b)| a * b).sum::<i32>().to_string())
-}
-pub fn muls(input: &str) -> Vec<(i32, i32)> {
-    let candidates = input.split("mul");
-    candidates
-        .map(|e| mul_suffix(e))
-        .filter(|e| e.is_ok())
-        .map(|e| e.unwrap().1)
-        .collect::<Vec<_>>()
-}
-pub fn find_mul(input: &str) -> IResult<&str, (i32, i32)> {
-    preceded(
-        many0(anychar),
-        delimited(tag("mul("), separated_pair(i32, tag(","), i32), tag(")")),
-    )(input)
-}
-
-pub fn mul_suffix(input: &str) -> IResult<&str, (i32, i32)> {
-    delimited(tag("("), separated_pair(i32, tag(","), i32), tag(")"))(input)
+    let tokens = parser::parse(input);
+    let mut val = 0;
+    for token in tokens {
+        if let Token::Mul(a, b) = token {
+            val += a * b;
+        }
+    }
+    Ok(val.to_string())
 }
 
 #[cfg(test)]
