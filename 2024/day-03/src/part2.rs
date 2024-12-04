@@ -6,27 +6,41 @@ mod parser {
         bytes::complete::tag,
         character::complete::{anychar, i32},
         combinator::{map, value},
-        multi::many1,
+        multi::{many1, many_till},
         sequence::{delimited, separated_pair},
         IResult,
     };
 
     pub fn parse(input: &str) -> Vec<Token> {
-        if let Ok((_, vec)) = many1(alt((
-            map(mul, |(a, b)| Token::Mul(a, b)),
-            value(Token::Do, tag("do()")),
-            value(Token::Dont, tag("don't()")),
-            value(Token::Noise, anychar),
-        )))(input)
-        {
-            vec
-        } else {
-            vec![]
+        match tokens(input) {
+            Ok((_, tokens)) => tokens,
+            _ => vec![],
         }
     }
 
-    fn mul(input: &str) -> IResult<&str, (i32, i32)> {
-        delimited(tag("mul("), separated_pair(i32, tag(","), i32), tag(")"))(input)
+    pub fn tokens(input: &str) -> IResult<&str, Vec<Token>> {
+        many1(token)(input)
+    }
+
+    pub fn token(input: &str) -> IResult<&str, Token> {
+        map(
+            many_till(
+                anychar,
+                alt((
+                    mul,
+                    value(Token::Do, tag("do()")),
+                    value(Token::Dont, tag("don't()")),
+                )),
+            ),
+            |(_, tok)| tok,
+        )(input)
+    }
+
+    fn mul(input: &str) -> IResult<&str, Token> {
+        map(
+            delimited(tag("mul("), separated_pair(i32, tag(","), i32), tag(")")),
+            |(a, b)| Token::Mul(a, b),
+        )(input)
     }
 }
 
@@ -35,7 +49,6 @@ pub enum Token {
     Do,
     Dont,
     Mul(i32, i32),
-    Noise,
 }
 
 #[tracing::instrument(skip(input))]
@@ -51,7 +64,6 @@ pub fn process(input: &str) -> miette::Result<String, AocError> {
             }
             Token::Do => switch = true,
             Token::Dont => switch = false,
-            Token::Noise => {}
         }
     }
     Ok(val.to_string())
