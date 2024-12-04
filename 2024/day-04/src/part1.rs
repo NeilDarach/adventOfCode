@@ -203,6 +203,7 @@ XMAS.S
         Ok(())
     }
 
+    #[test]
     fn test_has_word() -> miette::Result<()> {
         let grid = parse("abc\ndef\nghi");
         assert!(grid.has_word((0, 0).into(), Delta::Right, "abc"));
@@ -212,6 +213,7 @@ XMAS.S
         Ok(())
     }
 
+    #[test]
     fn test_words_from() -> miette::Result<()> {
         let grid = parse(
             "..XMAS..
