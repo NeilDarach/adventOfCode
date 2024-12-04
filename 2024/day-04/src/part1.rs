@@ -8,6 +8,15 @@ pub struct Cell {
     y: i32,
 }
 
+impl From<(i32, i32)> for Cell {
+    fn from(value: (i32, i32)) -> Self {
+        Cell {
+            x: value.0,
+            y: value.1,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Grid {
     pub cells: HashMap<Cell, char>,
@@ -62,24 +71,23 @@ impl Grid {
         Some(new_cell)
     }
 
-    pub fn has_word(&self, cell: Option<Cell>, delta: Delta, word: &str) -> bool {
+    pub fn has_word(&self, cell: Cell, delta: Delta, word: &str) -> bool {
         if word.len() == 0 {
             return true;
         }
-        if cell.is_none() {
-            return false;
-        }
-        let cell = cell.unwrap();
         let Some(c) = self.cells.get(&cell) else {
             return false;
         };
         if word.chars().nth(0) != Some(*c) {
             return false;
         }
-        self.has_word(self.next(cell, delta), delta, &word[1..])
+        let Some(cell) = self.next(cell, delta) else {
+            return word.len() == 1;
+        };
+        self.has_word(cell, delta, &word[1..])
     }
 
-    pub fn words_from(&self, cell: Option<Cell>, word: &str) -> i32 {
+    pub fn words_from(&self, cell: Cell, word: &str) -> i32 {
         let mut count = 0;
         for delta in Delta::all() {
             if self.has_word(cell, delta, word) {
@@ -152,7 +160,7 @@ pub fn process(input: &str) -> miette::Result<String, AocError> {
     let mut count = 0;
     for x in 0..=grid.width {
         for y in 0..=grid.height {
-            count += grid.words_from(Some(Cell { x, y }), "XMAS");
+            count += grid.words_from((x, y).into(), "XMAS");
         }
     }
     Ok(count.to_string())
@@ -197,10 +205,10 @@ XMAS.S
 
     fn test_has_word() -> miette::Result<()> {
         let grid = parse("abc\ndef\nghi");
-        assert!(grid.has_word(Some(Cell { x: 0, y: 0 }), Delta::Right, "abc"));
-        assert!(grid.has_word(Some(Cell { x: 0, y: 0 }), Delta::Down, "adg"));
-        assert!(grid.has_word(Some(Cell { x: 0, y: 0 }), Delta::DownRight, "aei"));
-        assert!(!grid.has_word(Some(Cell { x: 0, y: 0 }), Delta::DownRight, "aeix"));
+        assert!(grid.has_word((0, 0).into(), Delta::Right, "abc"));
+        assert!(grid.has_word((0, 0).into(), Delta::Down, "adg"));
+        assert!(grid.has_word((0, 0).into(), Delta::DownRight, "aei"));
+        assert!(!grid.has_word((0, 0).into(), Delta::DownRight, "aeix"));
         Ok(())
     }
 
@@ -213,9 +221,9 @@ XMAS.S
 ",
         );
 
-        assert_eq!(0, grid.words_from(Some(Cell { x: 0, y: 0 }), "XMAS"));
-        assert_eq!(2, grid.words_from(Some(Cell { x: 2, y: 0 }), "XMAS"));
-        assert_eq!(1, grid.words_from(Some(Cell { x: 5, y: 3 }), "XMAS"));
+        assert_eq!(0, grid.words_from((0, 0).into(), "XMAS"));
+        assert_eq!(2, grid.words_from((2, 0).into(), "XMAS"));
+        assert_eq!(1, grid.words_from((5, 3).into(), "XMAS"));
 
         Ok(())
     }
@@ -235,8 +243,8 @@ MXMXAXMASX";
 
         let grid = parse(input);
 
-        assert!(grid.has_word(Some(Cell { x: 3, y: 9 }), Delta::UpRight, "XMAS"));
-        assert!(grid.has_word(Some(Cell { x: 3, y: 9 }), Delta::UpLeft, "XMAS"));
+        assert!(grid.has_word((3, 9).into(), Delta::UpRight, "XMAS"));
+        assert!(grid.has_word((3, 9).into(), Delta::UpLeft, "XMAS"));
         Ok(())
     }
 

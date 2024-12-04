@@ -8,6 +8,15 @@ pub struct Cell {
     y: i32,
 }
 
+impl From<(i32, i32)> for Cell {
+    fn from(value: (i32, i32)) -> Self {
+        Cell {
+            x: value.0,
+            y: value.1,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Grid {
     pub cells: HashMap<Cell, char>,
@@ -62,28 +71,27 @@ impl Grid {
         Some(new_cell)
     }
 
-    pub fn has_word(&self, cell: Option<Cell>, delta: Delta, word: &str) -> bool {
+    pub fn has_word(&self, cell: Cell, delta: Delta, word: &str) -> bool {
         if word.len() == 0 {
             return true;
         }
-        if cell.is_none() {
-            return false;
-        }
-        let cell = cell.unwrap();
         let Some(c) = self.cells.get(&cell) else {
             return false;
         };
         if word.chars().nth(0) != Some(*c) {
             return false;
         }
-        self.has_word(self.next(cell, delta), delta, &word[1..])
+        let Some(cell) = self.next(cell, delta) else {
+            return word.len() == 1;
+        };
+        self.has_word(cell, delta, &word[1..])
     }
 
-    pub fn words_from(&self, cell: Option<Cell>, word: &str) -> Vec<(Cell, Delta)> {
+    pub fn words_from(&self, cell: Cell, word: &str) -> Vec<(Cell, Delta)> {
         let mut vec = vec![];
         for delta in Delta::diagonals() {
             if self.has_word(cell, delta, word) {
-                let mut midpoint = cell.unwrap();
+                let mut midpoint = cell;
                 midpoint.x += delta.delta().0 * (word.len() as i32 / 2);
                 midpoint.y += delta.delta().1 * (word.len() as i32 / 2);
                 vec.push((midpoint, delta));
@@ -164,7 +172,7 @@ pub fn process(input: &str) -> miette::Result<String, AocError> {
     let mut found: HashMap<Cell, i32> = HashMap::default();
     for x in 0..=grid.width {
         for y in 0..=grid.height {
-            for (cell, _dir) in grid.words_from(Some(Cell { x, y }), "MAS") {
+            for (cell, _dir) in grid.words_from((x, y).into(), "MAS") {
                 found.entry(cell).and_modify(|c| *c += 1).or_insert(1);
             }
         }
@@ -211,11 +219,12 @@ XMAS.S
 
     fn test_has_word() -> miette::Result<()> {
         let grid = parse("abc\ndef\nghi");
-        assert!(grid.has_word(Some(Cell { x: 0, y: 0 }), Delta::DownRight, "aei"));
-        assert!(!grid.has_word(Some(Cell { x: 0, y: 0 }), Delta::DownRight, "aeix"));
+        assert!(grid.has_word((0, 0).into(), Delta::DownRight, "aei"));
+        assert!(!grid.has_word((0, 0).into(), Delta::DownRight, "aeix"));
         Ok(())
     }
 
+    #[test]
     fn test_words_from() -> miette::Result<()> {
         let grid = parse(
             "..X.....
@@ -225,9 +234,9 @@ XMAS.S
 ",
         );
 
-        let res = grid.words_from(Some(Cell { x: 2, y: 1 }), "MAS");
+        let res = grid.words_from((2, 1).into(), "MAS");
         assert_eq!(0, res.len());
-        let res = grid.words_from(Some(Cell { x: 3, y: 1 }), "MAS");
+        let res = grid.words_from((3, 1).into(), "MAS");
         assert_eq!(1, res.len());
         assert_eq!(Delta::DownRight, res[0].1);
         assert_eq!(Cell { x: 4, y: 2 }, res[0].0);
