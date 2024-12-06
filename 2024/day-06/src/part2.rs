@@ -1,55 +1,82 @@
 use crate::custom_error::AocError;
 use std::collections::HashMap;
+use std::fmt::Display;
 
 #[tracing::instrument(skip(input))]
 pub fn process(input: &str) -> miette::Result<String, AocError> {
-    let grid = parser::parse(input);
-    let count = grid
-        .cells
-        .keys()
-        .filter(|e| process_candidate(&grid, e))
-        .count();
+    let mut grid = parser::parse(input);
+    let mut count = 0;
+    let guard = grid.guard.clone();
+    let visited = visited(&mut grid);
+    grid.guard = guard;
+    let keys = grid.cells.keys().map(|e| e.clone()).collect::<Vec<_>>();
+    for coord in keys {
+        let content = grid.cells.get(&coord).unwrap().clone();
+        let guard = grid.guard.clone();
+        if visited.contains_key(&coord) {
+            if process_candidate(&mut grid, 0, 0, &coord) {
+                count += 1;
+            }
+            grid.cells.insert(coord, content);
+            grid.guard = guard;
+        }
+    }
+    println!("");
     Ok(count.to_string())
 }
-pub fn process_candidate(grid: &Grid, pos: &Coord) -> bool {
+pub fn visited(grid: &mut Grid) -> HashMap<Coord, ()> {
+    let mut visited = HashMap::new();
+    loop {
+        if grid.next_cell().is_none() {
+            return visited;
+        }
+        if let Some(Content::Obstacle) = grid.next_cell() {
+            grid.guard.turn_right();
+            continue;
+        }
+        grid.guard.move_cell();
+        visited.insert(grid.guard.cell(), ());
+    }
+}
+
+pub fn process_candidate(grid: &mut Grid, _count: usize, _total: usize, pos: &Coord) -> bool {
     if let Content::Guard(p, _) = grid.guard {
         if p == *pos {
-            //dbg!("guard pos");
+            //println!("{}/{} On the guard", count, total);
             return false;
         }
     }
     if let Some(&Content::Obstacle) = grid.cells.get(pos) {
-        //dbg!("obstacle");
+        //println!("{}/{} On an obstacle", count, total);
         return false;
     }
 
-    let mut grid = grid.clone();
     grid.cells.insert(*pos, Content::Obstacle);
     let mut visited = HashMap::new();
     loop {
-        if grid.next_cell().is_none() {
-            //println!("off the map");
+        while grid.next_cell() == Some(&Content::Empty) {
+            grid.guard.move_cell();
+        }
+        let next = grid.next_cell();
+        if next.is_none() {
             return false;
         }
-        if let Some(Content::Obstacle) = grid.next_cell() {
-            //println!("turn");
-            grid.guard.turn_right();
-            continue;
-        }
-        if let Some(_) = visited.get(&grid.guard) {
-            //println!("loop");
+        if visited.contains_key(&grid.guard) {
+            print!("{}, ", pos);
             return true;
-        } else {
-            //println!("visited {:?}", grid.guard);
-            visited.insert(grid.guard, ());
         }
-        grid.guard.move_cell();
-        //println!("moved {:?}", grid.guard);
+        visited.insert(grid.guard, ());
+        grid.guard.turn_right();
     }
 }
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Coord(i32, i32);
+impl Display for Coord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({},{})", self.0, self.1)
+    }
+}
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum Content {
@@ -188,7 +215,7 @@ mod tests {
 ......#...";
 
         let grid = parser::parse(input);
-        assert!(process_candidate(&grid, &Coord(3, 6)));
+        assert!(process_candidate(&grid, 0, 0, &Coord(3, 6)));
         Ok(())
     }
 
