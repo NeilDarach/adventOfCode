@@ -1,80 +1,69 @@
 use crate::custom_error::AocError;
+use crate::grid::grid::*;
 use std::collections::HashMap;
 use std::fmt::Display;
 
 #[tracing::instrument(skip(input))]
 pub fn process(input: &str) -> miette::Result<String, AocError> {
-    let mut grid = parser::parse(input);
     let mut count = 0;
-    let guard = grid.guard.clone();
-    let visited = visited(&mut grid);
-    grid.guard = guard;
-    let keys = grid.cells.keys().map(|e| e.clone()).collect::<Vec<_>>();
-    for coord in keys {
-        let content = grid.cells.get(&coord).unwrap().clone();
-        let guard = grid.guard.clone();
-        if visited.contains_key(&coord) {
-            if process_candidate(&mut grid, 0, 0, &coord) {
+    let mut map = parser::parse(input);
+    let guard = map.guard.clone();
+    let visited = visited(&mut map);
+    map.guard = guard;
+    for c in map.grid.keys() {
+        let content = map.grid.get(c).cloned().unwrap();
+        let guard = map.guard.clone();
+        if visited.contains_key(&c) {
+            if process_candidate(&mut map, 0, 0, c) {
                 count += 1;
             }
-            grid.cells.insert(coord, content);
-            grid.guard = guard;
+            map.grid.insert(c, content);
+            map.guard = guard;
         }
     }
-    println!("");
+
     Ok(count.to_string())
 }
-pub fn visited(grid: &mut Grid) -> HashMap<Coord, ()> {
+pub fn visited(map: &mut Map) -> HashMap<Xy, ()> {
     let mut visited = HashMap::new();
     loop {
-        if grid.next_cell().is_none() {
+        if map.next_cell().is_none() {
             return visited;
         }
-        if let Some(Content::Obstacle) = grid.next_cell() {
-            grid.guard.turn_right();
+        if let Some(Content::Obstacle) = map.next_cell() {
+            map.guard.turn_right();
             continue;
         }
-        grid.guard.move_cell();
-        visited.insert(grid.guard.cell(), ());
+        map.guard.move_cell();
+        visited.insert(map.guard.cell(), ());
     }
 }
 
-pub fn process_candidate(grid: &mut Grid, _count: usize, _total: usize, pos: &Coord) -> bool {
-    if let Content::Guard(p, _) = grid.guard {
-        if p == *pos {
-            //println!("{}/{} On the guard", count, total);
+pub fn process_candidate(map: &mut Map, _count: usize, _total: usize, pos: Xy) -> bool {
+    if let Content::Guard(p, _) = map.guard {
+        if p == pos {
             return false;
         }
     }
-    if let Some(&Content::Obstacle) = grid.cells.get(pos) {
-        //println!("{}/{} On an obstacle", count, total);
+    if let Some(&Content::Obstacle) = map.grid.get(pos) {
         return false;
     }
 
-    grid.cells.insert(*pos, Content::Obstacle);
+    map.grid.insert(pos, Content::Obstacle);
     let mut visited = HashMap::new();
     loop {
-        while grid.next_cell() == Some(&Content::Empty) {
-            grid.guard.move_cell();
+        while map.next_cell() == Some(&Content::Empty) {
+            map.guard.move_cell();
         }
-        let next = grid.next_cell();
+        let next = map.next_cell();
         if next.is_none() {
             return false;
         }
-        if visited.contains_key(&grid.guard) {
-            print!("{}, ", pos);
+        if visited.contains_key(&map.guard) {
             return true;
         }
-        visited.insert(grid.guard, ());
-        grid.guard.turn_right();
-    }
-}
-
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
-pub struct Coord(i32, i32);
-impl Display for Coord {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({},{})", self.0, self.1)
+        visited.insert(map.guard, ());
+        map.guard.turn_right();
     }
 }
 
@@ -82,34 +71,42 @@ impl Display for Coord {
 pub enum Content {
     Empty,
     Obstacle,
-    Guard(Coord, Vector),
+    Guard(Xy, Direction4),
+}
+
+impl Display for Content {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Empty => "~",
+                Self::Obstacle => "#",
+                Self::Guard(_, _) => "G",
+            }
+        )
+    }
 }
 
 impl Content {
-    pub fn look(&self) -> Option<Coord> {
+    pub fn look(&self) -> Option<Xy> {
         match self {
             Content::Empty => None,
             Content::Obstacle => None,
-            Content::Guard(c, v) => {
-                let delta = v.delta();
-                Some(Coord(c.0 + delta.0, c.1 + delta.1))
-            }
+            Content::Guard(c, v) => Some(*c + *v),
         }
     }
     pub fn move_cell(&mut self) {
         match self {
             Content::Empty => {}
             Content::Obstacle => {}
-            Content::Guard(c, v) => {
-                let delta = v.delta();
-                *c = Coord(c.0 + delta.0, c.1 + delta.1)
-            }
+            Content::Guard(c, v) => *c = *c + *v,
         }
     }
-    pub fn cell(&mut self) -> Coord {
+    pub fn cell(&mut self) -> Xy {
         match self {
-            Content::Empty => Coord(0, 0),
-            Content::Obstacle => Coord(0, 0),
+            Content::Empty => (0, 0).into(),
+            Content::Obstacle => (0, 0).into(),
             Content::Guard(c, _) => *c,
         }
     }
@@ -118,82 +115,55 @@ impl Content {
             Content::Empty => {}
             Content::Obstacle => {}
             Content::Guard(_, v) => {
-                *v = v.turn_right();
+                *v = v.clockwise();
             }
         };
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
-pub enum Vector {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-impl Vector {
-    pub fn turn_right(self) -> Self {
-        match self {
-            Self::Up => Self::Right,
-            Self::Right => Self::Down,
-            Self::Down => Self::Left,
-            Self::Left => Self::Up,
-        }
-    }
-    pub fn delta(self) -> Coord {
-        match self {
-            Self::Up => Coord(0, -1),
-            Self::Right => Coord(1, 0),
-            Self::Down => Coord(0, 1),
-            Self::Left => Coord(-1, 0),
-        }
-    }
-}
-#[derive(Clone, Debug)]
-pub struct Grid {
-    cells: HashMap<Coord, Content>,
+#[derive(Debug)]
+pub struct Map {
+    grid: Grid<Content>,
     guard: Content,
 }
 
-impl Grid {
+impl Map {
     pub fn default() -> Self {
-        Grid {
-            cells: HashMap::default(),
+        Map {
+            grid: Grid::empty(),
             guard: Content::Empty,
         }
     }
 
     pub fn next_cell(&self) -> Option<&Content> {
         if let Some(cell) = self.guard.look() {
-            self.cells.get(&cell)
+            self.grid.get(cell)
         } else {
             None
         }
     }
 }
-
 mod parser {
     use super::*;
-    pub fn parse(input: &str) -> Grid {
-        let mut grid = Grid::default();
+    pub fn parse(input: &str) -> Map {
+        let mut map = Map::default();
         for (y, line) in input.lines().enumerate() {
             for (x, c) in line.chars().enumerate() {
                 let item = match c {
                     '.' => Content::Empty,
                     '#' => Content::Obstacle,
-                    '^' => Content::Guard(Coord(x as i32, y as i32), Vector::Up),
+                    '^' => Content::Guard((x, y).into(), Direction4::N),
                     _ => panic!("Unrecognised symbol {} at ({},{})", c, x, y),
                 };
                 if let Content::Guard(..) = item {
-                    grid.guard = item;
-                    grid.cells.insert(Coord(x as i32, y as i32), Content::Empty);
+                    map.guard = item;
+                    map.grid.insert((x, y).into(), Content::Empty);
                 } else {
-                    grid.cells.insert(Coord(x as i32, y as i32), item);
+                    map.grid.insert((x, y).into(), item);
                 };
             }
         }
-        grid
+        map
     }
 }
 
@@ -201,9 +171,7 @@ mod parser {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_process_candidate() -> miette::Result<()> {
-        let input = "....#.....
+    const SAMPLE: &str = "....#.....
 .........#
 ..........
 ..#.......
@@ -214,74 +182,46 @@ mod tests {
 #.........
 ......#...";
 
-        let grid = parser::parse(input);
-        assert!(process_candidate(&grid, 0, 0, &Coord(3, 6)));
+    #[test]
+    fn test_process_candidate() -> miette::Result<()> {
+        let mut map = parser::parse(SAMPLE);
+        assert!(process_candidate(&mut map, 0, 0, Xy::new(3, 6)));
         Ok(())
     }
 
     #[test]
     fn test_process() -> miette::Result<()> {
-        let input = "....#.....
-.........#
-..........
-..#.......
-.......#..
-..........
-.#..^.....
-........#.
-#.........
-......#...";
-        assert_eq!("6", process(input)?);
+        assert_eq!("6", process(SAMPLE)?);
         Ok(())
     }
 
     #[test]
     fn test_parse() -> miette::Result<()> {
-        let map = "....#.....
-.........#
-..........
-..#.......
-.......#..
-..........
-.#..^.....
-........#.
-#.........
-......#...";
-        let grid = parser::parse(map);
-        assert_eq!(grid.cells.get(&Coord(0, 0)), Some(&Content::Empty));
-        assert_eq!(grid.cells.get(&Coord(2, 3)), Some(&Content::Obstacle));
+        let map = parser::parse(SAMPLE);
+        assert_eq!(map.grid.get((0, 0).into()), Some(&Content::Empty));
+        assert_eq!(map.grid.get((2, 3).into()), Some(&Content::Obstacle));
         Ok(())
     }
 
     #[test]
     fn test_look() -> miette::Result<()> {
-        let map = "....#.....
-.........#
-..........
-..#.......
-.......#..
-..........
-.#..^.....
-........#.
-#.........
-......#...";
-        let mut grid = parser::parse(map);
-        assert_eq!(grid.next_cell(), Some(&Content::Empty));
-        grid.guard = Content::Guard(Coord(4, 1), Vector::Up);
-        assert_eq!(grid.next_cell(), Some(&Content::Obstacle));
-        grid.guard = Content::Guard(Coord(3, 0), Vector::Right);
-        assert_eq!(grid.next_cell(), Some(&Content::Obstacle));
-        grid.guard = Content::Guard(Coord(3, 0), Vector::Left);
-        assert_eq!(grid.next_cell(), Some(&Content::Empty));
-        grid.guard.turn_right();
-        assert_eq!(grid.next_cell(), None);
+        let mut map = parser::parse(SAMPLE);
+        assert_eq!(map.next_cell(), Some(&Content::Empty));
+        map.guard = Content::Guard((4, 1).into(), Direction4::N);
+        assert_eq!(map.next_cell(), Some(&Content::Obstacle));
+        map.guard = Content::Guard((3, 0).into(), Direction4::E);
+        assert_eq!(map.next_cell(), Some(&Content::Obstacle));
+        map.guard = Content::Guard((3, 0).into(), Direction4::W);
+        assert_eq!(map.next_cell(), Some(&Content::Empty));
+        map.guard.turn_right();
+        assert_eq!(map.next_cell(), None);
 
-        grid.guard.turn_right();
-        grid.guard.turn_right();
-        grid.guard.move_cell();
-        if let Content::Guard(c, v) = grid.guard {
-            assert_eq!(Vector::Down, v);
-            assert_eq!(Coord(3, 1), c);
+        map.guard.turn_right();
+        map.guard.turn_right();
+        map.guard.move_cell();
+        if let Content::Guard(c, v) = map.guard {
+            assert_eq!(Direction4::S, v);
+            assert_eq!(Xy::new(3, 1), c);
         } else {
             panic!("Not a guard");
         }
