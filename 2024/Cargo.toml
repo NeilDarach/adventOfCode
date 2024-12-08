@@ -25,6 +25,7 @@ test-log = { version = "0.2.13", default-features = false, features = [
 ] }
 indicatif = { version = "0.17.7", features = ["rayon"] }
 utils = { path = "./utils" }
+divan = "0.1.7"
 
 # Defines a size-optimized profile for the WASM bundle in release mode
 [profile.wasm-release]

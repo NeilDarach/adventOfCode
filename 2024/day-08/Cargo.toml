@@ -18,4 +18,10 @@ utils.workspace = true
 [dev-dependencies]
 rstest.workspace = true
 test-log.workspace = true
+divan.workspace = true
+
+[[bench]]
+name = "day-08-bench"
+path = "benches/benchmarks.rs"
+harness = false
 
