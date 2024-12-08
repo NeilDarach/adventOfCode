@@ -11,6 +11,7 @@ pub fn process(input: &str) -> miette::Result<String, AocError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use utils::grid::*;
     const SAMPLE: &str = "....#.....
 .........#
 ..........

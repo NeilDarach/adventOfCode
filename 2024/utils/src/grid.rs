@@ -277,7 +277,7 @@ where
 {
     pub fn empty() -> Self {
         Self {
-            elements: vec![vec![]],
+            elements: vec![vec![None]],
             start: (0, 0).into(),
             end: (0, 0).into(),
         }
@@ -331,7 +331,6 @@ where
 
         if y < self.start.y {
             let mut new_rows = vec![];
-            dbg!(self.start.y - y);
             for _ in 0..(self.start.y - y) as usize {
                 let mut row: Vec<Option<T>> = vec![];
                 row.resize_with((self.end.x - self.start.x + 1) as usize, || None);
@@ -344,11 +343,11 @@ where
     }
 
     pub fn insert(&mut self, xy: Xy, element: T) {
-        if !(self.start.x..=self.end.x).contains(&xy.x) {
-            self.extend_x(xy.x);
-        }
         if !(self.start.y..=self.end.y).contains(&xy.y) {
             self.extend_y(xy.y);
+        }
+        if !(self.start.x..=self.end.x).contains(&xy.x) {
+            self.extend_x(xy.x);
         }
 
         let xy = self.int_xy(xy);
