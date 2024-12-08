@@ -1,5 +1,7 @@
+use itertools::chain;
 use itertools::Itertools;
 use std::collections::HashMap;
+use std::iter::successors;
 pub use utils::grid::Xy;
 
 pub struct Map {
@@ -25,9 +27,9 @@ impl Map {
                 .combinations(2)
                 .flat_map(|pair| {
                     if repeating {
-                        self.repeating_antinodes_for_each(pair[0], pair[1])
+                        self.repeating_antinodes_for_each((pair[0], pair[1]))
                     } else {
-                        self.antinodes_for_each(pair[0], pair[1])
+                        self.antinodes_for_each((pair[0], pair[1]))
                     }
                 })
                 .collect::<Vec<Xy>>(),
@@ -38,33 +40,22 @@ impl Map {
         pos.x >= 0 && pos.x <= self.width && pos.y >= 0 && pos.y <= self.height
     }
 
-    pub fn antinodes_for_each(&self, a: &Xy, b: &Xy) -> Vec<Xy> {
-        let separation = *a - *b;
-        let mut antinodes = vec![];
-        let x = *a + separation;
-        let y = *b - separation;
-        if self.contains(x) {
-            antinodes.push(x);
-        }
-        if self.contains(y) {
-            antinodes.push(y);
-        }
-        antinodes
+    pub fn antinodes_for_each(&self, (a, b): (&Xy, &Xy)) -> Vec<Xy> {
+        let sep = *a - *b;
+        [*a + sep, *b - sep]
+            .into_iter()
+            .filter(|e| self.contains(*e))
+            .collect::<Vec<_>>()
     }
-    pub fn repeating_antinodes_for_each(&self, a: &Xy, b: &Xy) -> Vec<Xy> {
-        let separation = *a - *b;
-        let mut antinodes = vec![];
-        let mut x = *a;
-        let mut y = *b;
-        while self.contains(x) {
-            antinodes.push(x);
-            x += separation;
-        }
-        while self.contains(y) {
-            antinodes.push(y);
-            y -= separation;
-        }
-        antinodes
+
+    pub fn repeating_antinodes_for_each(&self, (a, b): (&Xy, &Xy)) -> Vec<Xy> {
+        let sep = *a - *b;
+        let contains_or_none = |xy| if self.contains(xy) { Some(xy) } else { None };
+        chain(
+            successors(Some(*a), |&e| contains_or_none(e + sep)),
+            successors(Some(*b), |&e| contains_or_none(e - sep)),
+        )
+        .collect::<Vec<_>>()
     }
 }
 

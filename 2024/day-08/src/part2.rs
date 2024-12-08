@@ -32,7 +32,7 @@ mod tests {
     #[test]
     fn test_antinodes_for() -> miette::Result<()> {
         let map = parser::parse(SAMPLE);
-        let antinodes = map.repeating_antinodes_for_each(&(0, 0).into(), &(3, 1).into());
+        let antinodes = map.repeating_antinodes_for_each((&(0, 0).into(), &(3, 1).into()));
         assert_eq!(4, antinodes.len());
         assert_eq!(Xy::new(0, 0), antinodes[0]);
         assert_eq!(Xy::new(3, 1), antinodes[1]);
