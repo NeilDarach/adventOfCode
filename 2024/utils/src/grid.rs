@@ -277,29 +277,22 @@ where
 {
     pub fn empty() -> Self {
         Self {
-            elements: vec![vec![None]],
+            elements: vec![vec![]],
             start: (0, 0).into(),
             end: (0, 0).into(),
         }
     }
 
-    pub fn sample() -> Grid<String> {
-        let elements = vec![
-            vec![Some("x".to_string()), Some("yy".to_string())],
-            vec![Some("XX".to_string()), Some("Y".to_string())],
-        ];
-        Grid::<String> {
-            elements,
-            start: (0, 0).into(),
-            end: (1, 1).into(),
-        }
+    pub fn width(&self) -> i32 {
+        self.end.x - self.start.x
+    }
+
+    pub fn height(&self) -> i32 {
+        self.end.y - self.start.y
     }
 
     pub fn all(&self) -> impl Iterator<Item = (Xy, Option<&T>)> {
-        (self.start.x..=self.end.x)
-            .cartesian_product(self.start.y..=self.end.y)
-            .map(|(x, y)| Xy::new(x, y))
-            .map(|e| (e, self.get(e)))
+        self.keys().map(|e| (e, self.get(e)))
     }
 
     pub fn keys(&self) -> impl Iterator<Item = Xy> + use<T> {
@@ -386,6 +379,88 @@ where
     }
 
     pub fn contains(&self, xy: Xy) -> bool {
-        self.get(xy).is_some()
+        xy.x >= self.start.x && xy.x <= self.end.x && xy.y >= self.start.y && xy.y <= self.end.y
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_create_xy() -> Result<(), String> {
+        let xy = Xy::new(0, 1);
+        assert_eq!(0, xy.x);
+        assert_eq!(1, xy.y);
+        Ok(())
+    }
+
+    #[test]
+    fn test_modify_xy() -> Result<(), String> {
+        let a = Xy::new(0, 1);
+        let b = Xy::new(4, 9);
+        assert_eq!(Xy::new(4, 10), a + b);
+        assert_eq!(Xy::new(4, 10), b + a);
+        assert_eq!(Xy::new(-4, -8), a - b);
+        assert_eq!(Xy::new(4, 8), b - a);
+
+        assert_eq!(Xy::new(4, 8), b + Direction4::N);
+        assert_eq!(Xy::new(3, 8), b - Direction8::SE);
+        Ok(())
+    }
+
+    #[test]
+    fn test_directions() -> Result<(), String> {
+        assert_eq!(Direction4::E, Direction4::N.clockwise());
+        assert_eq!(Direction8::E, Direction8::SE.anticlockwise());
+        assert_eq!(4, Direction4::all().len());
+        assert_eq!(8, Direction8::all().len());
+        assert_eq!(4, Direction8::cardinal().len());
+        assert_eq!(4, Direction8::diagonal().len());
+        assert_eq!(
+            Direction8::diagonal(),
+            Direction8::cardinal()
+                .iter()
+                .map(|e| e.clockwise())
+                .collect::<Vec<_>>()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_grid() -> Result<(), String> {
+        let mut grid: Grid<String> = Grid::empty();
+        assert_eq!(0, grid.height());
+        assert_eq!(0, grid.width());
+
+        grid.insert((3, 4).into(), "One".to_string());
+        assert_eq!(4, grid.height());
+        assert_eq!(3, grid.width());
+
+        assert_eq!(Some(&"One".to_string()), grid.get((3, 4).into()));
+        assert_eq!(None, grid.get((0, 0).into()));
+        assert_eq!(None, grid.get((2, 4).into()));
+        assert_eq!(None, grid.get((4, 5).into()));
+        assert_eq!(None, grid.get((-3, -3).into()));
+
+        grid.insert((-3, -3).into(), "Two".to_string());
+        assert_eq!(Some(&"Two".to_string()), grid.get((-3, -3).into()));
+        assert_eq!(7, grid.height());
+        assert_eq!(6, grid.width());
+
+        assert!(grid.contains((0, 0).into()));
+        assert!(grid.contains((2, 2).into()));
+        assert!(grid.contains((-3, -3).into()));
+        assert!(!grid.contains((-3, -4).into()));
+        assert!(!grid.contains((-4, -3).into()));
+
+        assert!(grid.contains((3, 4).into()));
+        assert!(!grid.contains((4, 4).into()));
+        assert!(!grid.contains((-3, 5).into()));
+
+        assert_eq!(56, grid.keys().count());
+        assert_eq!(56, grid.all().count());
+        assert_eq!(2, grid.all().filter(|(_k, v)| v.is_some()).count());
+        Ok(())
     }
 }
