@@ -1,6 +1,6 @@
-pub use crate::grid::grid::*;
 use std::collections::HashMap;
 pub use std::fmt::Display;
+use utils::grid::*;
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum Content {

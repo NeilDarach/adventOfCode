@@ -43,6 +43,7 @@
               cargo-generate
               cargo-watch
               cargo-nextest
+                            cargo-flamegraph
               nixNvim.packages.${pkgs.system}.nvim
             ] ++ lib.optionals pkgs.stdenv.isDarwin [
               # Additional darwin specific inputs can be set here

@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::custom_error::AocError;
 use std::collections::HashMap;
+use utils::grid::*;
 
 #[tracing::instrument(skip(input))]
 pub fn process(input: &str) -> miette::Result<String, AocError> {

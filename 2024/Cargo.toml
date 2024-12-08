@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = ["day-*"]
+members = ["day-*", "utils"]
 default-members = ["day-*"]
 
 [workspace.dependencies]
@@ -24,6 +24,7 @@ test-log = { version = "0.2.13", default-features = false, features = [
     "trace",
 ] }
 indicatif = { version = "0.17.7", features = ["rayon"] }
+utils = { path = "./utils" }
 
 # Defines a size-optimized profile for the WASM bundle in release mode
 [profile.wasm-release]
@@ -32,3 +33,6 @@ opt-level = 'z'
 lto = true
 codegen-units = 1
 panic = "abort"
+
+[profile.release]
+debug = true
