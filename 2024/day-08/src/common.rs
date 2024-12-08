@@ -1,6 +1,6 @@
-pub use crate::grid::Xy;
 use itertools::Itertools;
 use std::collections::HashMap;
+pub use utils::grid::Xy;
 
 pub struct Map {
     pub antennae: HashMap<char, Vec<Xy>>,
