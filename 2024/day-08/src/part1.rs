@@ -43,7 +43,7 @@ mod tests {
     #[test]
     fn test_antinodes_for() -> miette::Result<()> {
         let map = parser::parse(SAMPLE);
-        let antinodes = map.antinodes_for_each(&(5, 2).into(), &(7, 3).into(), false);
+        let antinodes = map.antinodes_for_each(&(5, 2).into(), &(7, 3).into());
         assert_eq!(2, antinodes.len());
         assert_eq!(Xy::new(3, 1), antinodes[0]);
         assert_eq!(Xy::new(9, 4), antinodes[1]);
@@ -53,7 +53,7 @@ mod tests {
     #[test]
     fn test_antinodes_off_the_map() -> miette::Result<()> {
         let map = parser::parse(SAMPLE);
-        let antinodes = map.antinodes_for_each(&(6, 5).into(), &(9, 9).into(), false);
+        let antinodes = map.antinodes_for_each(&(6, 5).into(), &(9, 9).into());
         assert_eq!(1, antinodes.len());
         assert_eq!(Xy::new(3, 1), antinodes[0]);
         Ok(())

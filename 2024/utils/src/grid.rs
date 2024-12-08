@@ -1,6 +1,5 @@
 use std::fmt::{Debug, Display};
-use std::ops::Add;
-use std::ops::Sub;
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use itertools::Itertools;
 
@@ -131,6 +130,13 @@ impl Add<Xy> for Xy {
     }
 }
 
+impl AddAssign<Xy> for Xy {
+    fn add_assign(&mut self, rhs: Xy) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+    }
+}
+
 impl Add<Direction4> for Xy {
     type Output = Self;
     fn add(self, other: Direction4) -> Self::Output {
@@ -158,6 +164,13 @@ impl Sub<Xy> for Xy {
             x: self.x - other.x,
             y: self.y - other.y,
         }
+    }
+}
+
+impl SubAssign<Xy> for Xy {
+    fn sub_assign(&mut self, rhs: Xy) {
+        self.x -= rhs.x;
+        self.y -= rhs.y;
     }
 }
 

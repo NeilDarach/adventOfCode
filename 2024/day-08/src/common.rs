@@ -13,8 +13,7 @@ impl Map {
         self.antennae
             .keys()
             .flat_map(|&e| self.antinodes_for_all(e, repeating))
-            .sorted()
-            .dedup()
+            .unique()
             .collect::<Vec<_>>()
     }
 
@@ -24,44 +23,46 @@ impl Map {
             Some(v) => v
                 .iter()
                 .combinations(2)
-                .flat_map(|pair| self.antinodes_for_each(pair[0], pair[1], repeating))
-                .sorted()
-                .dedup()
+                .flat_map(|pair| {
+                    if repeating {
+                        self.repeating_antinodes_for_each(pair[0], pair[1])
+                    } else {
+                        self.antinodes_for_each(pair[0], pair[1])
+                    }
+                })
                 .collect::<Vec<Xy>>(),
         }
     }
 
-    pub fn antinodes_for_each(&self, a: &Xy, b: &Xy, repeating: bool) -> Vec<Xy> {
+    fn contains(&self, pos: Xy) -> bool {
+        pos.x >= 0 && pos.x <= self.width && pos.y >= 0 && pos.y <= self.height
+    }
+
+    pub fn antinodes_for_each(&self, a: &Xy, b: &Xy) -> Vec<Xy> {
         let separation = *a - *b;
         let mut antinodes = vec![];
-        let mut x = *a + separation;
-        if repeating {
-            antinodes.push(*a);
-            antinodes.push(*b);
+        let x = *a + separation;
+        let y = *b - separation;
+        if self.contains(x) {
+            antinodes.push(x);
         }
-        loop {
-            if x.x >= 0 && x.x <= self.width && x.y >= 0 && x.y <= self.height {
-                antinodes.push(x);
-                if !repeating {
-                    break;
-                }
-                x = x + separation;
-            } else {
-                break;
-            }
+        if self.contains(y) {
+            antinodes.push(y);
         }
-
-        let mut y = *b - separation;
-        loop {
-            if y.x >= 0 && y.x <= self.width && y.y >= 0 && y.y <= self.height {
-                antinodes.push(y);
-                if !repeating {
-                    break;
-                }
-                y = y - separation;
-            } else {
-                break;
-            }
+        antinodes
+    }
+    pub fn repeating_antinodes_for_each(&self, a: &Xy, b: &Xy) -> Vec<Xy> {
+        let separation = *a - *b;
+        let mut antinodes = vec![];
+        let mut x = *a;
+        let mut y = *b;
+        while self.contains(x) {
+            antinodes.push(x);
+            x += separation;
+        }
+        while self.contains(y) {
+            antinodes.push(y);
+            y -= separation;
         }
         antinodes
     }
