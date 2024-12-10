@@ -9,7 +9,6 @@ pub fn process(input: &str) -> miette::Result<String, AocError> {
         .all()
         .filter(|(_k, v)| *v == Some(&0))
         .collect::<Vec<_>>();
-    dbg!(&starts);
     let count: usize = starts
         .iter()
         .map(|e| trails.paths(e.0).iter().map(|e| e[0]).count())
