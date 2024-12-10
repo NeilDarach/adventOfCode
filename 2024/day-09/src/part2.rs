@@ -60,20 +60,21 @@ impl Files {
 mod parser {
     use super::*;
     pub fn parse(input: &str) -> Files {
-        let mut id = 0;
-        let mut empty = false;
         let mut files = Files::new();
-        for c in input.trim().chars() {
-            let count = c.to_digit(10).expect("can't parse c");
-            let block = if empty { None } else { Some(id) };
-            for _ in 0..count {
-                files.blocks.push(block);
-            }
-            empty = !empty;
-            if empty {
-                id += 1;
-            }
-        }
+        let blocks = input
+            .trim()
+            .chars()
+            .map(|e| e.to_digit(10).unwrap() as usize)
+            .enumerate()
+            .flat_map(|(i, e)| {
+                if i % 2 == 0 {
+                    vec![Some(i as u64 / 2); e]
+                } else {
+                    vec![None; e]
+                }
+            })
+            .collect::<Vec<_>>();
+        files.blocks = blocks;
         let mut i = 0;
         for chunk in files.blocks.chunk_by(|a, b| a == b) {
             if chunk[0].is_some() {
