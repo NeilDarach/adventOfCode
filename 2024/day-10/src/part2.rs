@@ -3,79 +3,61 @@ use utils::grid::*;
 
 #[tracing::instrument(skip(input))]
 pub fn process(input: &str) -> miette::Result<String, AocError> {
-    let trails = parser::parse(input);
-    let starts = trails
-        .cells
-        .all()
-        .filter(|(_k, v)| *v == Some(&0))
-        .collect::<Vec<_>>();
-    let count: usize = starts
-        .iter()
-        .map(|e| trails.paths(e.0).iter().map(|e| e[0]).count())
+    let grid = parser::parse(input);
+    let count: usize = grid
+        .keys()
+        .filter(|&xy| grid.get(xy) == Some(&0))
+        .map(|e| paths(&grid, e).iter().map(|e| e[0]).count())
         .sum();
     Ok(count.to_string())
 }
-pub struct Trails {
-    cells: Grid<i32>,
+
+pub fn exits(grid: &Grid<i32>, xy: Xy) -> Vec<Xy> {
+    match grid.get(xy) {
+        None => vec![],
+        Some(val) => Direction4::all()
+            .iter()
+            .map(|&d| xy + d)
+            .filter(|&xy| grid.get(xy).copied() == Some(val + 1))
+            .collect::<Vec<_>>(),
+    }
 }
 
-impl Trails {
-    pub fn new() -> Self {
-        Self {
-            cells: Grid::empty(),
-        }
+pub fn paths(grid: &Grid<i32>, xy: Xy) -> Vec<Vec<Xy>> {
+    if grid.get(xy) == Some(&9) {
+        return vec![vec![xy]];
     }
-
-    pub fn exits(&self, xy: Xy) -> Vec<Xy> {
-        let mut exits = vec![];
-        if let Some(&current) = self.cells.get(xy) {
-            for d in Direction4::all() {
-                let possible = xy + d;
-                if let Some(&next) = self.cells.get(possible) {
-                    if next == current + 1 {
-                        exits.push(xy + d);
-                    }
-                }
-            }
-        }
-        exits
+    let mut result = exits(grid, xy)
+        .iter()
+        .flat_map(|&exit| {
+            paths(grid, exit)
+                .iter()
+                .filter(|e| !e.is_empty())
+                .cloned()
+                .map(|mut p| {
+                    p.push(xy);
+                    p
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    if result.is_empty() {
+        result.push(vec![]);
     }
-
-    pub fn paths(&self, start: Xy) -> Vec<Vec<Xy>> {
-        if self.cells.get(start) == Some(&9) {
-            return vec![vec![start]];
-        }
-        let exits = self.exits(start);
-        if exits.is_empty() {
-            return vec![vec![]];
-        }
-        let mut result = vec![];
-        for exit in exits {
-            let paths = self.paths(exit);
-            let paths = paths.iter().filter(|e| !e.is_empty());
-            for each in paths {
-                let mut v = each.clone();
-                v.push(start);
-                result.push(v)
-            }
-        }
-        result
-    }
+    result
 }
 
 mod parser {
     use super::*;
-    pub fn parse(input: &str) -> Trails {
-        let mut trails = Trails::new();
+    pub fn parse(input: &str) -> Grid<i32> {
+        let mut grid = Grid::empty();
         for (j, line) in input.lines().enumerate() {
             for (i, c) in line.chars().enumerate() {
-                trails
-                    .cells
-                    .insert((i, j).into(), c.to_string().parse().unwrap());
+                grid.insert((i, j).into(), c.to_string().parse().unwrap());
             }
         }
 
-        trails
+        grid
     }
 }
 
@@ -95,20 +77,20 @@ mod tests {
 
     #[test]
     fn test_parse() -> miette::Result<()> {
-        let trails = parser::parse(TRAIL_1);
-        assert_eq!(4, trails.cells.width());
-        assert_eq!(4, trails.cells.height());
-        assert_eq!(Some(&8), trails.cells.get((0, 2).into()));
+        let grid = parser::parse(TRAIL_1);
+        assert_eq!(4, grid.width());
+        assert_eq!(4, grid.height());
+        assert_eq!(Some(&8), grid.get((0, 2).into()));
         Ok(())
     }
 
     #[test]
     fn test_find_exits() -> miette::Result<()> {
-        let trails = parser::parse(TRAIL_2);
-        let exits = trails.exits((0, 0).into());
-        assert_eq!(1, exits.len());
-        let exits = trails.exits((1, 0).into());
-        assert_eq!(0, exits.len());
+        let grid = parser::parse(TRAIL_2);
+        let all_exits = exits(&grid, (0, 0).into());
+        assert_eq!(1, all_exits.len());
+        let all_exits = exits(&grid, (1, 0).into());
+        assert_eq!(0, all_exits.len());
         Ok(())
     }
 }
