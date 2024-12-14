@@ -8,9 +8,7 @@
       inputs = { nixpkgs.follows = "nixpkgs"; };
     };
     flake-utils.url = "github:numtide/flake-utils";
-    nixNvim = {
-      url = "github:NeilDarach/nixNvim";
-    };
+    nixNvim = { url = "github:NeilDarach/nixNvim"; };
 
   };
   outputs = { self, nixpkgs, flake-utils, nixNvim, rust-overlay, ... }@inputs:
@@ -40,10 +38,11 @@
               tracy
               openssl
               pkg-config
+              clippy
               cargo-generate
               cargo-watch
               cargo-nextest
-                            cargo-flamegraph
+              cargo-flamegraph
               nixNvim.packages.${pkgs.system}.nvim
             ] ++ lib.optionals pkgs.stdenv.isDarwin [
               # Additional darwin specific inputs can be set here
