@@ -265,7 +265,7 @@ where
                 };
                 write!(f, "{} ", c)?;
             }
-            writeln!(f, "")?;
+            writeln!(f)?;
         }
         Ok(())
     }
@@ -311,7 +311,7 @@ where
         if x < self.start.x {
             for i in 0..=(self.end.y - self.start.y) as usize {
                 let mut prefix: Vec<Option<T>> = vec![];
-                prefix.resize_with((self.start.x - x as i32) as usize, || None);
+                prefix.resize_with((self.start.x - x) as usize, || None);
                 prefix.append(&mut self.elements[i]);
                 self.elements[i] = prefix;
             }
@@ -351,8 +351,7 @@ where
             return None;
         }
         let xy = self.int_xy(xy);
-        let current = self.elements[xy.y][xy.x].take();
-        return current;
+        self.elements[xy.y][xy.x].take()
     }
     pub fn insert(&mut self, xy: Xy, element: T) {
         if !(self.start.y..=self.end.y).contains(&xy.y) {
