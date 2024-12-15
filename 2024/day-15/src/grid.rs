@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Display};
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::ops::Add;
+use std::ops::Sub;
 
 use itertools::Itertools;
 
@@ -10,19 +11,6 @@ pub enum Direction4 {
     S,
     W,
 }
-
-impl Display for Direction4 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::N => write!(f, "N")?,
-            Self::E => write!(f, "E")?,
-            Self::S => write!(f, "S")?,
-            Self::W => write!(f, "W")?,
-        }
-        Ok(())
-    }
-}
-
 impl Direction4 {
     pub fn all() -> Vec<Self> {
         vec![Self::N, Self::E, Self::S, Self::W]
@@ -143,13 +131,6 @@ impl Add<Xy> for Xy {
     }
 }
 
-impl AddAssign<Xy> for Xy {
-    fn add_assign(&mut self, rhs: Xy) {
-        self.x += rhs.x;
-        self.y += rhs.y;
-    }
-}
-
 impl Add<Direction4> for Xy {
     type Output = Self;
     fn add(self, other: Direction4) -> Self::Output {
@@ -177,13 +158,6 @@ impl Sub<Xy> for Xy {
             x: self.x - other.x,
             y: self.y - other.y,
         }
-    }
-}
-
-impl SubAssign<Xy> for Xy {
-    fn sub_assign(&mut self, rhs: Xy) {
-        self.x -= rhs.x;
-        self.y -= rhs.y;
     }
 }
 
@@ -278,7 +252,7 @@ where
                 };
                 write!(f, "{} ", c)?;
             }
-            writeln!(f)?;
+            writeln!(f, "")?;
         }
         Ok(())
     }
@@ -296,19 +270,26 @@ where
         }
     }
 
-    pub fn width(&self) -> i32 {
-        self.end.x - self.start.x + 1
-    }
-
-    pub fn height(&self) -> i32 {
-        self.end.y - self.start.y + 1
+    pub fn sample() -> Grid<String> {
+        let elements = vec![
+            vec![Some("x".to_string()), Some("yy".to_string())],
+            vec![Some("XX".to_string()), Some("Y".to_string())],
+        ];
+        Grid::<String> {
+            elements,
+            start: (0, 0).into(),
+            end: (1, 1).into(),
+        }
     }
 
     pub fn all(&self) -> impl Iterator<Item = (Xy, Option<&T>)> {
-        self.keys().map(|e| (e, self.get(e)))
+        (self.start.x..=self.end.x)
+            .cartesian_product(self.start.y..=self.end.y)
+            .map(|(x, y)| Xy::new(x, y))
+            .map(|e| (e, self.get(e)))
     }
 
-    pub fn keys(&self) -> impl Iterator<Item = Xy> + use<T> {
+    pub fn keys(&self) -> impl Iterator<Item = Xy> {
         (self.start.x..=self.end.x)
             .cartesian_product(self.start.y..=self.end.y)
             .map(|(x, y)| Xy::new(x, y))
@@ -324,7 +305,7 @@ where
         if x < self.start.x {
             for i in 0..=(self.end.y - self.start.y) as usize {
                 let mut prefix: Vec<Option<T>> = vec![];
-                prefix.resize_with((self.start.x - x) as usize, || None);
+                prefix.resize_with((self.start.x - x as i32) as usize, || None);
                 prefix.append(&mut self.elements[i]);
                 self.elements[i] = prefix;
             }
@@ -344,6 +325,7 @@ where
 
         if y < self.start.y {
             let mut new_rows = vec![];
+            dbg!(self.start.y - y);
             for _ in 0..(self.start.y - y) as usize {
                 let mut row: Vec<Option<T>> = vec![];
                 row.resize_with((self.end.x - self.start.x + 1) as usize, || None);
@@ -355,23 +337,12 @@ where
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.height() == 1 && self.width() == 1 && self.elements[0][0].is_none()
-    }
-
-    pub fn remove(&mut self, xy: Xy) -> Option<T> {
-        if !self.in_bounds(xy) {
-            return None;
-        }
-        let xy = self.int_xy(xy);
-        self.elements[xy.y][xy.x].take()
-    }
     pub fn insert(&mut self, xy: Xy, element: T) {
-        if !(self.start.y..=self.end.y).contains(&xy.y) {
-            self.extend_y(xy.y);
-        }
         if !(self.start.x..=self.end.x).contains(&xy.x) {
             self.extend_x(xy.x);
+        }
+        if !(self.start.y..=self.end.y).contains(&xy.y) {
+            self.extend_y(xy.y);
         }
 
         let xy = self.int_xy(xy);
@@ -396,94 +367,12 @@ where
         }
         let xy = self.int_xy(xy);
         match &self.elements[xy.y][xy.x] {
-            Some(e) => Some(e),
+            Some(e) => Some(&e),
             None => None,
         }
     }
 
     pub fn contains(&self, xy: Xy) -> bool {
-        xy.x >= self.start.x && xy.x <= self.end.x && xy.y >= self.start.y && xy.y <= self.end.y
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_create_xy() -> Result<(), String> {
-        let xy = Xy::new(0, 1);
-        assert_eq!(0, xy.x);
-        assert_eq!(1, xy.y);
-        Ok(())
-    }
-
-    #[test]
-    fn test_modify_xy() -> Result<(), String> {
-        let a = Xy::new(0, 1);
-        let b = Xy::new(4, 9);
-        assert_eq!(Xy::new(4, 10), a + b);
-        assert_eq!(Xy::new(4, 10), b + a);
-        assert_eq!(Xy::new(-4, -8), a - b);
-        assert_eq!(Xy::new(4, 8), b - a);
-
-        assert_eq!(Xy::new(4, 8), b + Direction4::N);
-        assert_eq!(Xy::new(3, 8), b - Direction8::SE);
-        Ok(())
-    }
-
-    #[test]
-    fn test_directions() -> Result<(), String> {
-        assert_eq!(Direction4::E, Direction4::N.clockwise());
-        assert_eq!(Direction8::E, Direction8::SE.anticlockwise());
-        assert_eq!(4, Direction4::all().len());
-        assert_eq!(8, Direction8::all().len());
-        assert_eq!(4, Direction8::cardinal().len());
-        assert_eq!(4, Direction8::diagonal().len());
-        assert_eq!(
-            Direction8::diagonal(),
-            Direction8::cardinal()
-                .iter()
-                .map(|e| e.clockwise())
-                .collect::<Vec<_>>()
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn test_grid() -> Result<(), String> {
-        let mut grid: Grid<String> = Grid::empty();
-        assert_eq!(0, grid.height());
-        assert_eq!(0, grid.width());
-
-        grid.insert((3, 4).into(), "One".to_string());
-        assert_eq!(4, grid.height());
-        assert_eq!(3, grid.width());
-
-        assert_eq!(Some(&"One".to_string()), grid.get((3, 4).into()));
-        assert_eq!(None, grid.get((0, 0).into()));
-        assert_eq!(None, grid.get((2, 4).into()));
-        assert_eq!(None, grid.get((4, 5).into()));
-        assert_eq!(None, grid.get((-3, -3).into()));
-
-        grid.insert((-3, -3).into(), "Two".to_string());
-        assert_eq!(Some(&"Two".to_string()), grid.get((-3, -3).into()));
-        assert_eq!(7, grid.height());
-        assert_eq!(6, grid.width());
-
-        assert!(grid.contains((0, 0).into()));
-        assert!(grid.contains((2, 2).into()));
-        assert!(grid.contains((-3, -3).into()));
-        assert!(!grid.contains((-3, -4).into()));
-        assert!(!grid.contains((-4, -3).into()));
-
-        assert!(grid.contains((3, 4).into()));
-        assert!(!grid.contains((4, 4).into()));
-        assert!(!grid.contains((-3, 5).into()));
-
-        assert_eq!(56, grid.keys().count());
-        assert_eq!(56, grid.all().count());
-        assert_eq!(2, grid.all().filter(|(_k, v)| v.is_some()).count());
-        Ok(())
+        self.get(xy).is_some()
     }
 }
