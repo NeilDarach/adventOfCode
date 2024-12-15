@@ -33,7 +33,7 @@ impl WarehouseType for Wide {
             '@' => {
                 warehouse.grid.insert((x * 2, y).into(), Item::Empty);
                 warehouse.grid.insert(((x * 2) + 1, y).into(), Item::Empty);
-                warehouse.robot_location = Xy::new(x * 2 as i32, y);
+                warehouse.robot_location = Xy::new(x * 2, y);
             }
             _ => panic!("Bad map"),
         }
