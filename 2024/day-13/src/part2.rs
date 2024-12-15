@@ -19,7 +19,6 @@ pub struct Machine {
 
 impl Machine {
     pub fn solve(&mut self, offset: i128) -> Option<i128> {
-        println!("Solve");
         let prize = (self.prize.0 + offset, self.prize.1 + offset);
         let num = (self.button_a.0 * prize.1) - (self.button_a.1 * prize.0);
         let den = (self.button_a.0 * self.button_b.1) - (self.button_a.1 * self.button_b.0);
