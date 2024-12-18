@@ -1,7 +1,78 @@
 use std::fmt::{Debug, Display};
 use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::rc::Rc;
 
 use itertools::Itertools;
+
+#[derive(Eq, PartialEq, Clone)]
+pub struct Path<T>(T, Option<Rc<Path<T>>>);
+impl<T> Path<T> {
+    pub fn new(item: T) -> Self {
+        Self(item, None)
+    }
+    pub fn head(&self) -> T
+    where
+        T: Clone,
+    {
+        self.0.clone()
+    }
+    pub fn is_empty(&self) -> bool {
+        false
+    }
+    pub fn len(&self) -> usize {
+        match &self.1 {
+            None => 1,
+            Some(i) => 1 + &i.len(),
+        }
+    }
+    pub fn to_vec(&self) -> Vec<T>
+    where
+        T: Clone,
+    {
+        match &self.1 {
+            None => vec![self.0.clone()],
+            Some(i) => {
+                let mut vec = vec![self.0.clone()];
+                vec.append(i.to_vec().as_mut());
+                vec
+            }
+        }
+    }
+}
+
+impl<T> Add<T> for &Path<T>
+where
+    T: Clone,
+{
+    type Output = Path<T>;
+
+    fn add(self, rhs: T) -> Self::Output {
+        Path(rhs, Some(Rc::new(self.clone())))
+    }
+}
+
+impl<T> AddAssign<T> for Path<T>
+where
+    T: Clone,
+{
+    fn add_assign(&mut self, rhs: T) {
+        *self = Self(rhs, Some(Rc::new(self.clone())))
+    }
+}
+
+impl<T> Debug for Path<T>
+where
+    T: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.1 {
+            None => write!(f, "{:?}", &self.0),
+            Some(i) => {
+                write!(f, "{:?} -> {:?}", &self.0, &i)
+            }
+        }
+    }
+}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum Direction4 {
@@ -453,12 +524,12 @@ mod test {
     #[test]
     fn test_grid() -> Result<(), String> {
         let mut grid: Grid<String> = Grid::empty();
-        assert_eq!(0, grid.height());
-        assert_eq!(0, grid.width());
+        assert_eq!(1, grid.height());
+        assert_eq!(1, grid.width());
 
         grid.insert((3, 4).into(), "One".to_string());
-        assert_eq!(4, grid.height());
-        assert_eq!(3, grid.width());
+        assert_eq!(5, grid.height());
+        assert_eq!(4, grid.width());
 
         assert_eq!(Some(&"One".to_string()), grid.get((3, 4).into()));
         assert_eq!(None, grid.get((0, 0).into()));
@@ -468,8 +539,8 @@ mod test {
 
         grid.insert((-3, -3).into(), "Two".to_string());
         assert_eq!(Some(&"Two".to_string()), grid.get((-3, -3).into()));
-        assert_eq!(7, grid.height());
-        assert_eq!(6, grid.width());
+        assert_eq!(8, grid.height());
+        assert_eq!(7, grid.width());
 
         assert!(grid.contains((0, 0).into()));
         assert!(grid.contains((2, 2).into()));
@@ -484,6 +555,27 @@ mod test {
         assert_eq!(56, grid.keys().count());
         assert_eq!(56, grid.all().count());
         assert_eq!(2, grid.all().filter(|(_k, v)| v.is_some()).count());
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_path() -> Result<(), String> {
+        let mut path = Path::new(2);
+        path += 3;
+        assert_eq!(vec![3, 2], path.to_vec());
+        assert!(!path.is_empty());
+        assert_eq!(2, path.len());
+        dbg!("{:?}", &path);
+        assert_eq!("3 -> 2", format!("{:?}", &path));
+
+        let path2 = &path + 8;
+        assert_eq!(3, path2.len());
+        assert_eq!(2, path.len());
+        assert_eq!("8 -> 3 -> 2", format!("{:?}", &path2));
+
+        let mut str_path = Path::new("one".to_string());
+        str_path += "two".to_string();
+        assert_eq!("\"two\" -> \"one\"", format!("{:?}", &str_path));
         Ok(())
     }
 }

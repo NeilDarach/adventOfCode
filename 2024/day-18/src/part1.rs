@@ -1,6 +1,6 @@
 use crate::custom_error::AocError;
 use std::collections::{HashSet, VecDeque};
-use utils::grid::{Direction4, Grid, Xy};
+use utils::grid::{Direction4, Grid, Path, Xy};
 
 #[tracing::instrument(skip(input))]
 pub fn process(input: &str) -> miette::Result<String, AocError> {
@@ -26,9 +26,10 @@ impl Map {
 
     pub fn shortest_path2(&self, start: Xy, end: Xy) -> Option<i32> {
         let mut visited = HashSet::<Xy>::new();
-        let mut queue = VecDeque::<(Xy, i32)>::new();
-        queue.push_back((start, 0));
-        while let Some((cell, distance)) = queue.pop_front() {
+        let mut queue = VecDeque::<(Path<Xy>, i32)>::new();
+        queue.push_back((Path::new(start), 0));
+        while let Some((path, distance)) = queue.pop_front() {
+            let cell = path.head();
             if cell == end {
                 return Some(distance);
             }
@@ -43,7 +44,7 @@ impl Map {
                 continue;
             }
             for d in Direction4::all() {
-                queue.push_back((cell + d, distance + 1));
+                queue.push_back((&path + (cell + d), distance + 1));
             }
         }
         None
