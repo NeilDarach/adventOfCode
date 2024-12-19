@@ -3,7 +3,8 @@ _default:
 
 # Use `just work day-01 part1` to work on the specific binary for a specific day's problems
 work day part:
-    bacon {{day}}/src test 
+    bacon {{day}}/src libtest -- {{part}}
+
 lint day:
     cargo clippy -p {{day}}
 create day:
