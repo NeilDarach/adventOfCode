@@ -451,6 +451,7 @@ dependencies = [
 
 [[package]]
 name = "day-24"
+name = "day-22"
 version = "0.1.0"
 dependencies = [
  "divan",
